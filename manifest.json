@@ -1,0 +1,16 @@
+{
+  "name": "Kontrol Keliling Lapas",
+  "short_name": "Kontrol Keliling",
+  "description": "Pencatatan kontrol keliling petugas pengamanan per 2 jam",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eceff2",
+  "theme_color": "#15212c",
+  "lang": "id",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}

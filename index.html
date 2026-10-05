@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kontrol Keliling Lapas</title>
+<meta name="theme-color" content="#15212c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kontrol Keliling">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<script>
+/* =========================================================
+   KONFIGURASI — tempel URL Web App Google Apps Script (/exec)
+   Kosongkan untuk menjalankan mode contoh (data simulasi).
+   ========================================================= */
+const API_URL = "";
+</script>
+<style>
+:root{
+  --bg:#eceff2; --panel:#ffffff; --ink:#15212c; --muted:#5b6876; --line:#d3d9df;
+  --accent:#9a6a14; --accent-ink:#ffffff; --accent-soft:#f3e7cf;
+  --ok:#1f7a4a; --ok-soft:#d8efe2; --warn:#b06d00; --warn-soft:#fbeccd;
+  --bad:#b3261e; --bad-soft:#f8dcd9; --idle:#e3e7eb;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#111820; --panel:#19222c; --ink:#e6ebf0; --muted:#97a3af; --line:#2c3844;
+  --accent:#d9a441; --accent-ink:#1a1305; --accent-soft:#3a2e17;
+  --ok:#5cc58d; --ok-soft:#173527; --warn:#e6a93a; --warn-soft:#3b2d12;
+  --bad:#f0827a; --bad-soft:#3d1d1b; --idle:#24303b; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);padding-inline:16px;padding-block:env(safe-area-inset-top,0px) calc(48px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:.01em}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:600 12px/1 var(--f-display);text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+
+header.top{padding-top:20px;display:grid;grid-template-columns:1fr auto;gap:12px 20px;align-items:end}
+header.top h1{font-size:30px;font-weight:700;line-height:1.05}
+.clock{text-align:right}
+.clock .t{font:700 26px/1 var(--f-mono)}
+.clock .d{color:var(--muted);font-size:13px}
+.round{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:6px 18px;align-items:center}
+.round .num{font:700 44px/1 var(--f-display);color:var(--accent)}
+.round .lbl{font:600 18px/1.2 var(--f-display)}
+.round .sub{color:var(--muted);font-size:13px}
+.round .cd{text-align:right}
+.round .cd b{font:700 24px/1 var(--f-mono);display:block}
+.bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--idle);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
+@media (max-width:520px){.round{grid-template-columns:auto 1fr}.round .cd{grid-column:1/-1;text-align:left;display:flex;gap:8px;align-items:baseline}}
+
+.banner{border:1px dashed var(--warn);background:var(--warn-soft);border-radius:8px;padding:10px 14px;font-size:14px}
+.banner.q{border-color:var(--accent);background:var(--accent-soft)}
+
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;overflow-x:auto;padding-top:env(safe-area-inset-top,0px)}
+nav.tabs button{background:none;border:0;padding:12px 14px;font:600 16px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>*{flex:1 1 180px;min-width:0}
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
+input[type=text],input[type=password],input[type=date],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px;width:100%;font-size:16px}
+textarea{min-height:78px;resize:vertical}
+.code-in{font:700 26px/1 var(--f-mono)!important;letter-spacing:.35em;text-transform:uppercase;text-align:center}
+.hint{color:var(--muted);font-size:13px;font-weight:400}
+
+.scan{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:20px;border:2px dashed var(--line);border-radius:12px;background:var(--bg)}
+.scan svg{width:56px;height:56px;color:var(--accent)}
+#reader{width:100%;max-width:420px;border-radius:10px;overflow:hidden}
+#reader video{border-radius:10px}
+.picked{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:10px;background:var(--ok-soft);border:1px solid var(--ok)}
+.picked b{font:700 22px/1.1 var(--f-display)}
+details.manual summary{cursor:pointer;color:var(--muted);font-size:14px;font-weight:600;padding:4px 0}
+details.manual[open] summary{margin-bottom:12px}
+
+.posgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.posbtn{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);cursor:pointer;text-align:left;min-width:0}
+.posbtn .n{font:600 16px/1.15 var(--f-display)}
+.posbtn[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-soft)}
+.chip{display:inline-flex;align-items:center;gap:5px;font:600 11px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;padding:4px 7px;border-radius:999px;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.chip.idle{background:var(--idle);color:var(--muted)}
+
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--bg);padding:12px;cursor:pointer;font-weight:600}
+.seg button[aria-pressed="true"].aman{background:var(--ok);color:#fff}
+.seg button[aria-pressed="true"].temuan{background:var(--bad);color:#fff}
+
+.btn{border:0;border-radius:8px;padding:13px 18px;font:600 17px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:8px 10px;font-size:13px}
+.btn.wide{width:100%}
+.err{color:var(--bad);font-weight:600;font-size:14px}
+
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:640px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.tile b{display:block;font:700 30px/1.1 var(--f-display)}
+.tile.bad b{color:var(--bad)} .tile.ok b{color:var(--ok)}
+
+.mx-wrap{overflow-x:auto;margin-inline:-4px;padding-inline:4px}
+table.mx{border-collapse:separate;border-spacing:3px;min-width:640px;width:100%}
+table.mx th{font:600 12px/1.1 var(--f-mono);color:var(--muted);padding:4px 2px;text-align:center}
+table.mx th.cur{color:var(--accent)}
+table.mx td.pn{font:600 14px/1.15 var(--f-display);padding-right:8px;white-space:nowrap;text-align:left}
+table.mx td.c{height:30px;border-radius:5px;text-align:center;font:700 11px/1 var(--f-mono)}
+td.c.ok{background:var(--ok-soft);color:var(--ok)}
+td.c.bad{background:var(--bad-soft);color:var(--bad)}
+td.c.warn{background:var(--warn-soft);color:var(--warn);box-shadow:inset 0 0 0 2px var(--warn)}
+td.c.idle{background:var(--idle)}
+td.c.find{box-shadow:inset 0 0 0 2px var(--bad)}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+
+ul.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ul.log li{display:grid;grid-template-columns:62px 1fr auto;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
+ul.log li:first-child{border-top:0}
+ul.log .tm{font:700 15px/1.3 var(--f-mono)}
+ul.log .who{color:var(--muted);font-size:13px}
+ul.log .note{grid-column:2/-1;font-size:14px;background:var(--bad-soft);border-radius:6px;padding:6px 10px}
+ul.log .late{grid-column:2/-1;font-size:12px;color:var(--warn)}
+.empty{color:var(--muted);text-align:center;padding:22px 8px}
+
+table.rk{width:100%;border-collapse:collapse}
+table.rk td,table.rk th{padding:8px 6px;border-top:1px solid var(--line);text-align:left}
+table.rk th{font:600 12px/1 var(--f-display);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-top:0}
+table.rk td.n{text-align:right;font-family:var(--f-mono)}
+
+.posrow{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.posrow:first-child{border-top:0}
+.posrow .acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.plate{font:700 20px/1 var(--f-mono);letter-spacing:.25em;background:var(--ink);color:var(--bg);padding:8px 10px 8px 13px;border-radius:6px}
+.posrow.off{opacity:.55}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:8px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:20;max-width:calc(100% - 32px)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.grp{grid-column:1/-1;font:600 12px/1 var(--f-display);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding-top:8px}
+.grp:first-child{padding-top:0}
+table.mx td.ga{font:600 11px/1 var(--f-display);text-transform:uppercase;letter-spacing:.12em;color:var(--accent);padding:10px 2px 2px}
+/* Foto */
+.foto{display:flex;flex-direction:column;gap:10px}
+.foto .shot{display:flex;align-items:center;justify-content:center;gap:10px;padding:18px;border:2px dashed var(--line);border-radius:12px;background:var(--bg);cursor:pointer;font:600 17px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+.foto .shot svg{width:26px;height:26px;color:var(--accent)}
+.foto img{width:100%;max-height:340px;object-fit:contain;border-radius:10px;background:#000}
+.foto input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font:600 13px var(--f-body);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.modal{position:fixed;inset:0;background:rgba(5,10,15,.82);z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.modal img{max-width:100%;max-height:78vh;border-radius:8px;background:#000}
+.modal .cap{color:#e6ebf0;font-size:14px;text-align:center}
+.modal .row{justify-content:center}
+.modal .btn.ghost{color:#e6ebf0;border-color:#5b6876}
+
+/* Plakat cetak */
+#plates{display:none}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  .wrap,.toast{display:none!important}
+  #plates{display:grid!important;grid-template-columns:1fr 1fr;gap:8mm;padding:8mm}
+  .pl{border:2px solid #000;border-radius:4mm;padding:6mm;display:flex;flex-direction:column;align-items:center;gap:3mm;break-inside:avoid;text-align:center}
+  .pl .s{font:600 10pt var(--f-display);text-transform:uppercase;letter-spacing:.12em}
+  .pl .a{font:600 11pt var(--f-display);text-transform:uppercase;letter-spacing:.08em}
+  .pl .n{font:700 18pt/1.1 var(--f-display)}
+  .pl .qr img,.pl .qr canvas{width:50mm!important;height:50mm!important}
+  .pl .k{font:700 22pt var(--f-mono);letter-spacing:.3em}
+  .pl .i{font:9pt var(--f-body)}
+}
+
+/* Rupam & shift */
+.userbar{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.userbar b{font:700 20px/1.1 var(--f-display)}
+.banner.warn{border-style:solid;border-color:var(--warn)}
+.banner.ok-b{border:1px solid var(--ok);background:var(--ok-soft);line-height:1.8}
+.shifts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:720px){.shifts{grid-template-columns:repeat(2,1fr)}}
+.sc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.sc.now{border-color:var(--warn);box-shadow:inset 0 0 0 1px var(--warn)}
+.sc.lp{background:transparent;border-style:dashed}
+.sc .rp{font:700 20px/1.1 var(--f-display)}
+.sc .pc{font:700 30px/1 var(--f-display)}
+.sc .pc.good{color:var(--ok)} .sc .pc.poor{color:var(--bad)}
+table.mx th.band{font:600 11px/1 var(--f-display);text-transform:uppercase;letter-spacing:.08em;color:var(--ink);background:var(--idle);border-radius:4px;padding:6px 2px}
+table.mx .sep{border-left:2px solid var(--muted)}
+.rkh{font:600 13px/1 var(--f-display);text-transform:uppercase;letter-spacing:.1em;color:var(--accent);padding:10px 0 2px}
+.rkh:first-child{padding-top:0}
+table.rk td.n.zero{color:var(--bad);font-weight:700}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.kv div{display:flex;flex-direction:column;gap:2px}
+.kv span{font:600 12px/1 var(--f-display);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.ptgrow{display:grid;grid-template-columns:1fr auto auto;gap:8px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.ptgrow .acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.ptgrow select{width:auto;padding:8px}
+.ptgrow.off{opacity:.55}
+@media (max-width:480px){.ptgrow{grid-template-columns:1fr 1fr}.ptgrow>div:first-child{grid-column:1/-1}}
+.addrow{display:grid;grid-template-columns:1.2fr 1.5fr .8fr 1fr auto;gap:8px}
+@media (max-width:640px){.addrow{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="satker">Lapas Narkotika Kelas IIA Jakarta · KPLP</div>
+      <h1>Kontrol Keliling</h1>
+    </div>
+    <div class="clock"><div class="t mono" id="clk">--:--:--</div><div class="d" id="dte"></div></div>
+  </header>
+
+  <div class="banner" id="demoBanner" hidden>Mode contoh: data hanya simulasi di perangkat ini. Isi <b>API_URL</b> di index.html dengan URL Google Apps Script agar data tersimpan ke Spreadsheet.</div>
+
+  <!-- ================= MASUK ================= -->
+  <section id="loginView" class="stack" hidden>
+    <div class="panel stack" style="max-width:440px;width:100%;margin:0 auto">
+      <h2 style="font-size:24px">Masuk petugas</h2>
+      <div class="hint">Gunakan ID petugas (atau NIP) dan PIN 6 angka dari Kasubsi Keamanan.</div>
+      <label class="f">NIP / ID petugas<input type="text" id="lNip" autocomplete="username" autocapitalize="characters" placeholder="mis. R1-03"></label>
+      <label class="f">PIN<input type="password" id="lPin" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="6 angka"></label>
+      <div class="err" id="lErr" hidden></div>
+      <button class="btn wide" id="btnLogin">Masuk</button>
+      <div class="hint" id="demoAkun" hidden></div>
+    </div>
+  </section>
+
+  <!-- ================= APLIKASI ================= -->
+  <section id="appView" class="stack" hidden>
+    <div class="userbar"><div><b id="uNama"></b><div class="hint" id="uInfo"></div></div><span class="chip" id="uStatus"></span></div>
+
+    <div class="round" aria-live="polite">
+      <div class="num" id="rNum">--</div>
+      <div><div class="lbl" id="rLbl">Putaran</div><div class="sub" id="rSub"></div></div>
+      <div class="cd"><span class="eyebrow">Sisa waktu</span><b id="rCd">--:--</b></div>
+      <div class="bar"><i id="rBar" style="width:0"></i></div>
+    </div>
+    <div class="banner warn" id="dutyWarn" hidden></div>
+    <div class="banner q" id="queueBanner" hidden></div>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="lapor">Lapor</button>
+      <button role="tab" aria-selected="false" data-tab="pantau">Pantauan</button>
+      <button role="tab" aria-selected="false" data-tab="akun">Akun</button>
+      <button role="tab" aria-selected="false" data-tab="admin" id="tabAdmin" hidden>Admin</button>
+    </nav>
+
+    <!-- LAPOR -->
+    <section id="v-lapor" class="stack">
+      <div class="panel stack">
+        <div id="scanBox" class="scan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg>
+          <div><b style="font:700 20px var(--f-display)">Pindai QR plakat titik</b><div class="hint">Arahkan kamera ke QR yang tertempel di lokasi.</div></div>
+          <div id="reader" hidden></div>
+          <div class="row" style="justify-content:center;width:100%">
+            <button class="btn" id="btnScan" style="flex:0 1 260px">Buka kamera</button>
+            <button class="btn ghost" id="btnStop" style="flex:0 1 160px" hidden>Tutup kamera</button>
+          </div>
+          <div class="err" id="scanErr" hidden></div>
+        </div>
+        <div id="pickedBox" class="picked" hidden>
+          <div><span class="eyebrow">Titik terverifikasi</span><br><b id="pickedName"></b></div>
+          <button class="btn ghost sm" id="btnUlang">Ganti</button>
+        </div>
+        <details class="manual" id="manualBox">
+          <summary>Kamera tidak bisa dipakai? Pilih titik dan ketik kode</summary>
+          <div class="stack">
+            <div class="posgrid" id="posPick"></div>
+            <label class="f">Kode titik <span class="hint">4 karakter di bawah QR plakat</span>
+              <input type="text" id="fKode" class="code-in" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="····"></label>
+          </div>
+        </details>
+        <div class="foto">
+          <div style="font-weight:600;font-size:14px">Foto dokumentasi <span class="hint" id="fotoHint">Wajib · ambil langsung di lokasi</span></div>
+          <label class="shot" id="fotoShot" for="fFoto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            Ambil foto
+          </label>
+          <input type="file" id="fFoto" accept="image/*" capture="environment">
+          <div id="fotoPrev" class="stack" style="gap:8px" hidden>
+            <img id="fotoImg" alt="Pratinjau foto dokumentasi">
+            <div class="row" style="justify-content:space-between;align-items:center"><span class="hint" id="fotoInfo"></span><label class="btn ghost sm" for="fFoto" style="flex:0 0 auto">Ulangi foto</label></div>
+          </div>
+          <div class="err" id="fotoErr" hidden></div>
+        </div>
+        <div class="stack" style="gap:8px">
+          <div style="font-weight:600;font-size:14px">Kondisi</div>
+          <div class="seg"><button type="button" class="aman" id="kAman" aria-pressed="true">Aman terkendali</button><button type="button" class="temuan" id="kTemuan" aria-pressed="false">Ada temuan</button></div>
+        </div>
+        <label class="f">Catatan <span class="hint" id="noteHint">Opsional bila aman</span><textarea id="fCatatan" placeholder="mis. Gembok kamar 3 Blok B longgar, sudah dilaporkan ke Karupam"></textarea></label>
+        <div class="err" id="fErr" hidden></div>
+        <button class="btn wide" id="fKirim">Catat kontrol</button>
+      </div>
+    </section>
+
+    <!-- PANTAUAN -->
+    <section id="v-pantau" class="stack" hidden>
+      <div class="row" style="align-items:end">
+        <label class="f" style="flex:0 1 220px">Tanggal dinas<input type="date" id="pDate"></label>
+        <div style="flex:0 0 auto"><button class="btn ghost" id="btnRefresh">Muat ulang</button></div>
+        <div class="hint" id="pUpd" style="flex:1 1 200px"></div>
+      </div>
+      <div class="shifts" id="shiftCards"></div>
+      <div class="panel stack">
+        <h2 style="font-size:20px">Matriks titik × putaran</h2>
+        <div class="legend"><span class="chip ok">Terkontrol</span><span class="chip warn">Berjalan</span><span class="chip bad">Terlewat</span><span class="chip idle">Belum tiba</span></div>
+        <div class="mx-wrap"><table class="mx" id="mx"></table></div>
+        <div class="hint" id="mxHint"></div>
+      </div>
+      <div class="row" style="align-items:start">
+        <div class="panel stack" style="flex:2 1 360px"><h2 style="font-size:20px">Log kontrol</h2><ul class="log" id="log"></ul></div>
+        <div class="panel stack" style="flex:1 1 260px"><h2 style="font-size:20px">Rekap anggota dinas</h2><div id="rk"></div></div>
+      </div>
+    </section>
+
+    <!-- AKUN -->
+    <section id="v-akun" class="stack" hidden>
+      <div class="panel stack">
+        <h2 style="font-size:20px">Akun saya</h2>
+        <div id="akunInfo" class="kv"></div>
+        <div id="akunJadwal" class="hint"></div>
+      </div>
+      <div class="panel stack">
+        <h2 style="font-size:20px">Ganti PIN</h2>
+        <div class="row">
+          <label class="f">PIN lama<input type="password" id="pLama" inputmode="numeric" maxlength="6" autocomplete="current-password"></label>
+          <label class="f">PIN baru (6 angka)<input type="password" id="pBaru" inputmode="numeric" maxlength="6" autocomplete="new-password"></label>
+        </div>
+        <div class="err" id="pErr" hidden></div>
+        <div><button class="btn" id="btnPin">Simpan PIN</button></div>
+      </div>
+      <div><button class="btn ghost" id="btnLogout">Keluar dari aplikasi</button></div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="v-admin" class="stack" hidden>
+      <div class="panel stack">
+        <div class="row" style="align-items:center"><h2 style="font-size:20px">Petugas &amp; Rupam</h2><div style="flex:0 0 auto" class="hint" id="ptgCount"></div></div>
+        <div class="hint">Atur anggota tiap Rupam dan akun pejabat. Peran <b>Pimpinan</b> memantau semua Rupam dan membuka foto tanpa terikat jadwal; peran <b>Admin</b> juga mengelola petugas dan titik. Petugas baru otomatis mendapat PIN awal 6 angka; bagikan secara langsung, lalu minta petugas menggantinya di tab Akun.</div>
+        <div id="pinBaru" class="banner ok-b" hidden></div>
+        <div id="ptgList"></div>
+        <div class="addrow">
+          <label class="f">NIP / ID<input type="text" id="nNip"></label>
+          <label class="f">Nama<input type="text" id="nNama"></label>
+          <label class="f">Rupam<select id="nRupam"><option>I</option><option>II</option><option>III</option><option>IV</option><option value="-">–</option></select></label>
+          <label class="f">Peran<select id="nPeran"><option>Anggota</option><option>Warupam</option><option>Karupam</option><option>Pimpinan</option><option>Admin</option></select></label>
+          <div style="align-self:end"><button class="btn ghost" id="addPtg">Tambah</button></div>
+        </div>
+        <div class="err" id="ptgErr" hidden></div>
+        <button class="btn" id="savePtg" disabled>Simpan petugas</button>
+      </div>
+      <div class="panel stack">
+        <div class="row" style="align-items:center">
+          <h2 style="font-size:20px">Titik kontrol &amp; kode plakat</h2>
+          <div style="flex:0 0 auto"><button class="btn ghost sm" id="btnCetak">Cetak plakat QR</button></div>
+        </div>
+        <div id="posList"></div>
+        <div class="row" style="align-items:end">
+          <label class="f">Tambah titik<input type="text" id="newPos" placeholder="mis. Blok F Lt.1 Sayap Kanan"></label>
+          <label class="f" style="flex:1 1 140px">Area<input type="text" id="newArea" placeholder="mis. Blok F" list="areaList"></label><datalist id="areaList"></datalist>
+          <div style="flex:0 0 auto"><button class="btn ghost" id="addPos">Tambah</button></div>
+        </div>
+        <div class="hint">Tekan <b>Ganti kode</b> secara berkala lalu cetak ulang plakat, agar foto QR lama tidak bisa dipakai.</div>
+        <button class="btn" id="savePos" disabled>Simpan titik</button>
+      </div>
+      <div class="panel stack">
+        <h2 style="font-size:20px">Jadwal dinas Rupam</h2>
+        <div class="hint">Mengikuti pola Surat Perintah Kalapas: setiap Rupam 2 hari Siang → 2 hari Pagi → 2 hari Malam → 2 hari Lepas. Perubahan per tanggal (mis. tukar dinas) diketik di sheet <b>Jadwal</b>.</div>
+        <div class="mx-wrap"><table class="rk" id="jadwalTbl"></table></div>
+      </div>
+    </section>
+  </section>
+</div>
+
+<div id="plates"></div>
+<div class="toast" id="toast" hidden></div>
+<div class="modal" id="modal" hidden role="dialog" aria-label="Foto dokumentasi">
+  <img id="modalImg" alt="Foto dokumentasi kontrol">
+  <div class="cap" id="modalCap"></div>
+  <div class="row"><a class="btn ghost sm" id="modalDrive" target="_blank" rel="noopener" hidden>Buka di Drive</a><button class="btn ghost sm" id="modalClose">Tutup</button></div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const SLOTS=12, QR_PREFIX="KKLAPAS", RUPAM=["I","II","III","IV"], SHIFTS=["Pagi","Siang","Malam"];
+const pad=n=>String(n).padStart(2,"0");
+const HARI=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"], BLN=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
+
+/* ---------- Waktu (WIB) & hari dinas ---------- */
+let offset=0;
+const now=()=>new Date(Date.now()+offset);
+const wib=d=>{const x=new Date(d.getTime()+7*3600e3);return{y:x.getUTCFullYear(),m:x.getUTCMonth(),d:x.getUTCDate(),h:x.getUTCHours(),mi:x.getUTCMinutes(),s:x.getUTCSeconds(),dow:x.getUTCDay()}};
+const ymd=d=>{const w=wib(d);return w.y+"-"+pad(w.m+1)+"-"+pad(w.d)};
+const hhmm=ts=>{const w=wib(new Date(ts));return pad(w.h)+"."+pad(w.mi)};
+const PIMPINAN=["Karupam","Warupam","Pimpinan","Admin"], PERAN=["Anggota","Warupam","Karupam","Pimpinan","Admin"], LUAR=["Pimpinan","Admin"];
+const S={demo:!API_URL,token:ls.get("kk_token"),user:null,jam:{pagi:7,siang:13,malam:19},pos:[],jadwal:null,tanggalDinas:null,
+  entries:[],todayEntries:[],viewJadwal:null,petugas:[],date:null,sel:null,kondisi:"aman",wajibFoto:true,foto:null,
+  adminPos:null,posDirty:false,adminPtg:null,ptgDirty:false};
+try{S.user=JSON.parse(ls.get("kk_user")||"null")}catch(e){}
+const rel=ts=>(wib(new Date(ts)).h-S.jam.pagi+24)%24;
+const slotOf=ts=>Math.floor(rel(ts)/2);
+const dinasOf=ts=>ymd(new Date(ts-S.jam.pagi*3600e3));
+const slotStart=k=>(S.jam.pagi+2*k)%24;
+const slotLbl=k=>pad(slotStart(k))+".00–"+pad((slotStart(k)+2)%24)+".00";
+const shiftBounds=()=>{const a=(S.jam.siang-S.jam.pagi+24)%24/2,b=(S.jam.malam-S.jam.pagi+24)%24/2;return{Pagi:[0,a],Siang:[a,b],Malam:[b,SLOTS]}};
+const shiftOfSlot=k=>{const B=shiftBounds();return k<B.Siang[0]?"Pagi":k<B.Malam[0]?"Siang":"Malam"};
+const shiftJam=s=>({Pagi:[S.jam.pagi,S.jam.siang],Siang:[S.jam.siang,S.jam.malam],Malam:[S.jam.malam,S.jam.pagi]})[s].map(h=>pad(h)+".00").join("–");
+const tglLabel=t=>{const d=new Date(t+"T12:00:00+07:00"),w=wib(d);return HARI[w.dow]+", "+w.d+" "+BLN[w.m]+" "+w.y};
+
+/* ---------- API ---------- */
+async function api(body){
+  if(S.demo) return demo(body);
+  const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
+  return r.json();
+}
+async function call(action,data){
+  const r=await api({action,token:S.token,...(data||{})});
+  if(r&&r.sesi){logout("Sesi berakhir. Silakan masuk lagi.");throw Object.assign(new Error("sesi"),{sesi:true})}
+  return r;
+}
+
+/* ---------- Mode contoh ---------- */
+const demo=(()=>{
+  const DAFTAR=[{"id": "p01", "area": "Area Contoh A", "nama": "Contoh A Titik 1"}, {"id": "p02", "area": "Area Contoh A", "nama": "Contoh A Titik 2"}, {"id": "p03", "area": "Area Contoh A", "nama": "Contoh A Titik 3"}, {"id": "p04", "area": "Area Contoh A", "nama": "Contoh A Titik 4"}, {"id": "p05", "area": "Area Contoh B", "nama": "Contoh B Titik 1"}, {"id": "p06", "area": "Area Contoh B", "nama": "Contoh B Titik 2"}, {"id": "p07", "area": "Area Contoh B", "nama": "Contoh B Titik 3"}, {"id": "p08", "area": "Area Contoh B", "nama": "Contoh B Titik 4"}, {"id": "p09", "area": "Area Contoh C", "nama": "Contoh C Titik 1"}, {"id": "p10", "area": "Area Contoh C", "nama": "Contoh C Titik 2"}, {"id": "p11", "area": "Area Contoh C", "nama": "Contoh C Titik 3"}, {"id": "p12", "area": "Area Contoh D", "nama": "Contoh D Titik 1"}, {"id": "p13", "area": "Area Contoh D", "nama": "Contoh D Titik 2"}, {"id": "p14", "area": "Area Contoh D", "nama": "Contoh D Titik 3"}];
+  const A="ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let pos=DAFTAR.map((x,i)=>({...x,kode:[0,1,2,3].map(j=>A[(i*7+j*11+j*i)%A.length]).join(""),aktif:true}));
+  let ptg=[["kalapas","Contoh Kalapas","Kalapas","Pimpinan"],["kakplp","Contoh Ka. KPLP","Ka. KPLP","Pimpinan"],["kasikamtib","Contoh Kasi Kamtib","Kasi Kamtib","Pimpinan"],["kasubsikeamanan","Contoh Kasubsi Keamanan","Kasubsi Keamanan","Admin"],["kasubsipoltatip","Contoh Kasubsi Poltatip","Kasubsi Pelaporan dan Tata Tertib","Pimpinan"]].map(([nip,nama,jabatan,peran])=>({nip,nama,jabatan,peran,rupam:"-",pin:"123456",aktif:true}));
+  const nm={I:["Contoh Karupam I","Contoh Warupam I","Anggota Contoh A","Anggota Contoh B"],II:["Contoh Karupam II","Contoh Warupam II","Anggota Contoh C","Anggota Contoh D"],III:["Contoh Karupam III","Contoh Warupam III","Anggota Contoh E","Anggota Contoh F"],IV:["Contoh Karupam IV","Contoh Warupam IV","Anggota Contoh G","Anggota Contoh H"]};
+  RUPAM.forEach((r,ri)=>nm[r].forEach((n,j)=>ptg.push({nip:"R"+(ri+1)+"-0"+(j+1),nama:n,rupam:r,peran:j===0?"Karupam":j===1?"Warupam":"Anggota",pin:"111111",aktif:true})));
+  const log=[],fotos={};
+  const jd=demoJadwal;
+  let seeded=false;
+  function seed(){ if(seeded) return; seeded=true;
+    const t=Date.now(), tgl=dinasOf(t), cur=slotOf(t), base=new Date(tgl+"T"+pad(S.jam.pagi)+":00:00+07:00").getTime(), J=jd(tgl);
+    for(let k=0;k<=cur;k++){ const sh=shiftOfSlot(k), r=J[sh.toLowerCase()], mem=ptg.filter(p=>p.rupam===r);
+      pos.forEach((p,i)=>{ if((k===cur&&i%3)||(i*7+k*3)%13===0) return;
+        const ts=base+(2*k*60+((i*17+k*29)%110)+3)*60e3; if(ts>t) return; const who=mem[(i+k)%mem.length], tm=k===1&&i===5;
+        log.push({ts,putaran:k+1,shift:sh,rupamDinas:r,posId:p.id,posNama:p.nama,nip:who.nip,petugas:who.nama,rupam:r,kondisi:tm?"temuan":"aman",catatan:tm?"Contoh: gembok kamar Blok B longgar, sudah diganti.":"",ket:"",id:"d"+log.length,foto:"contoh"});});}
+  }
+  const ok=v=>new Promise(r=>setTimeout(()=>r(v),200));
+  const me=tok=>ptg.find(p=>"demo."+p.nip===tok&&p.aktif);
+  const pub=p=>({nip:p.nip,nama:p.nama,rupam:p.rupam,peran:p.peran,jabatan:p.jabatan||""});
+  const rnd=()=>String(Math.floor(100000+Math.random()*900000));
+  return b=>{
+    if(b.action==="login"){const p=ptg.find(x=>x.nip.toLowerCase()===String(b.nip).trim().toLowerCase()&&x.pin===String(b.pin).trim()&&x.aktif);return ok(p?{ok:true,token:"demo."+p.nip,user:pub(p)}:{ok:false,pesan:"NIP atau PIN salah, atau akun belum aktif."})}
+    const u=me(b.token); if(!u) return ok({ok:false,sesi:true});
+    const adm=u.peran==="Admin", luar=LUAR.includes(u.peran), tgl=dinasOf(Date.now());
+    switch(b.action){
+      case "init": seed(); return ok({ok:true,now:Date.now(),user:pub(u),satker:"Lapas Narkotika Kelas IIA Jakarta",wajibFoto:true,jam:{pagi:7,siang:13,malam:19},pos:pos.filter(p=>p.aktif).map(({id,nama,area})=>({id,nama,area})),tanggalDinas:tgl,jadwal:jd(tgl),jadwal7:[0,1,2,3,4,5,6,7].map(i=>{const t=addDays(tgl,i);return{tanggal:t,...jd(t)}})});
+      case "log": seed(); return ok({ok:true,tanggal:b.tanggal,jadwal:jd(b.tanggal),entries:log.filter(e=>dinasOf(e.ts)===b.tanggal),petugas:ptg.filter(p=>p.aktif&&!LUAR.includes(p.peran)).map(pub)});
+      case "lapor":{ const p=pos.find(x=>x.id===b.posId);
+        if(!p||p.kode!==String(b.kode).toUpperCase()) return ok({ok:false,tolak:true,pesan:"Kode tidak cocok dengan "+(p?p.nama:"titik ini")+"."});
+        if(!b.foto) return ok({ok:false,tolak:true,pesan:"Foto dokumentasi wajib dilampirkan."});
+        const ts=Date.now(),k=slotOf(ts),sh=shiftOfSlot(k),r=jd(tgl)[sh.toLowerCase()],fid="f"+log.length; fotos[fid]="data:image/jpeg;base64,"+b.foto;
+        const ket=luar?"Kontrol oleh "+(u.jabatan||u.peran):(u.rupam!==r)?"Di luar jadwal: shift "+sh+" dinas Rupam "+r:"";
+        log.push({ts,putaran:k+1,shift:sh,rupamDinas:r,posId:p.id,posNama:p.nama,nip:u.nip,petugas:u.nama,rupam:u.rupam,kondisi:b.kondisi,catatan:b.catatan,ket,id:"d"+log.length,foto:fid});
+        return ok({ok:true,posNama:p.nama,jam:hhmm(ts).replace(".",":"),putaran:k+1,shift:sh,catatanJadwal:ket}); }
+      case "ganti_pin": if(String(b.lama)!==u.pin) return ok({ok:false,pesan:"PIN lama salah."}); if(!/^\d{6}$/.test(b.baru)) return ok({ok:false,pesan:"PIN baru harus 6 angka."}); u.pin=b.baru; return ok({ok:true});
+      case "foto": if(!PIMPINAN.includes(u.peran)) return ok({ok:false,pesan:"Akses ini khusus Karupam / Warupam / Admin."}); return ok(fotos[b.id]?{ok:true,data:fotos[b.id]}:{ok:false,pesan:"Foto hanya tersedia untuk laporan yang dikirim di mode contoh."});
+    }
+    if(!adm) return ok({ok:false,pesan:"Akses ini khusus Admin."});
+    switch(b.action){
+      case "admin_pos": return ok({ok:true,pos:pos.map(x=>({...x}))});
+      case "admin_save": pos=b.list.filter(x=>x.nama.trim()).map(x=>({id:x.id||"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),nama:x.nama.trim(),area:(x.area||"").trim()||"Lainnya",kode:(pos.find(o=>o.id===x.id)||{}).kode||[0,1,2,3].map(()=>A[Math.floor(Math.random()*A.length)]).join(""),aktif:x.aktif!==false})); return ok({ok:true,pos:pos.map(x=>({...x}))});
+      case "admin_regen":{const p=pos.find(x=>x.id===b.id);p.kode=[0,1,2,3].map(()=>A[Math.floor(Math.random()*A.length)]).join("");return ok({ok:true,id:p.id,kode:p.kode})}
+      case "admin_petugas": return ok({ok:true,petugas:ptg.map(p=>({...pub(p),aktif:p.aktif}))});
+      case "admin_petugas_save":{ const old={};ptg.forEach(p=>old[p.nip]=p); const baru=[];
+        ptg=b.list.filter(p=>p.nip&&p.nama).map(p=>{let pin=old[p.nip]&&old[p.nip].pin;if(!pin){pin=rnd();baru.push({nip:p.nip,nama:p.nama,pin})}return{nip:p.nip,nama:p.nama,rupam:p.rupam,jabatan:p.jabatan||"",peran:p.nip===u.nip?"Admin":p.peran,pin,aktif:p.nip===u.nip?true:p.aktif!==false}});
+        return ok({ok:true,petugas:ptg.map(p=>({...pub(p),aktif:p.aktif})),pinBaru:baru}); }
+      case "admin_reset_pin":{const p=ptg.find(x=>x.nip===b.nip);if(!p)return ok({ok:false,pesan:"Petugas tidak ditemukan."});p.pin=rnd();return ok({ok:true,nip:p.nip,pin:p.pin})}
+    }
+    return ok({ok:false,pesan:"Aksi tidak dikenal."});
+  };
+})();
+const POLA={I:"SSPPMMLL",II:"LLSSPPMM",III:"PPMMLLSS",IV:"MMLLSSPP"};
+function demoJadwal(t){const d=Math.round((new Date(t+"T12:00:00+07:00")-new Date("2026-10-01T12:00:00+07:00"))/864e5),o={},K={P:"pagi",S:"siang",M:"malam",L:"lepas"};RUPAM.forEach(r=>{o[K[POLA[r][((d%8)+8)%8]]]=r});return o}
+function addDays(t,n){const d=new Date(t+"T12:00:00+07:00");d.setTime(d.getTime()+n*864e5);return ymd(d)}
+
+/* ---------- Masuk / keluar ---------- */
+function showView(){
+  const logged=!!(S.token&&S.user);
+  $("#loginView").hidden=logged; $("#appView").hidden=!logged;
+  if(!logged&&S.demo){$("#demoAkun").hidden=false;demoHint()}
+}
+function demoHint(){
+  const t=Date.now(), sh=shiftOfSlot(slotOf(t)), r=demoJadwal(dinasOf(t))[sh.toLowerCase()], ri=RUPAM.indexOf(r)+1;
+  $("#demoAkun").innerHTML=`Akun contoh (PIN <b class="mono">111111</b>):<br>• Pejabat (PIN <b class="mono">123456</b>): <b class="mono">kalapas</b>, <b class="mono">kakplp</b>, <b class="mono">kasikamtib</b>, <b class="mono">kasubsipoltatip</b> (Pimpinan), <b class="mono">kasubsikeamanan</b> (Admin)<br>• Rupam ${r} sedang dinas ${sh.toLowerCase()} sekarang: Karupam <b class="mono">R${ri}-01</b>, anggota <b class="mono">R${ri}-03</b><br>• ID lain: R1-01 s.d. R4-04 (angka pertama = Rupam)`;
+}
+async function login(){
+  const nip=$("#lNip").value.trim(), pin=$("#lPin").value.trim(), e=$("#lErr"); e.hidden=true;
+  if(!nip||!pin){e.textContent="Isi NIP dan PIN.";e.hidden=false;return}
+  const btn=$("#btnLogin"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Memeriksa…';
+  try{
+    const r=await api({action:"login",nip,pin});
+    if(!r.ok){e.textContent=r.pesan;e.hidden=false;return}
+    S.token=r.token; S.user=r.user; ls.set("kk_token",r.token); ls.set("kk_user",JSON.stringify(r.user));
+    $("#lPin").value=""; showView(); await init();
+  }catch(x){e.textContent="Tidak dapat terhubung ke server. Periksa sinyal.";e.hidden=false}
+  finally{btn.disabled=false;btn.textContent="Masuk"}
+}
+function logout(msg){
+  S.token=null;S.user=null;ls.del("kk_token");ls.del("kk_user");S.adminPos=S.adminPtg=null;
+  stopScan(); showView(); if(msg) toast(msg);
+}
+
+/* ---------- Muat data ---------- */
+async function init(){
+  try{
+    const r=await call("init");
+    if(!r.ok) throw new Error(r.pesan);
+    offset=r.now-Date.now(); S.user=r.user; ls.set("kk_user",JSON.stringify(r.user));
+    S.jam=r.jam; S.pos=r.pos; S.jadwal=r.jadwal; S.jadwal7=r.jadwal7; S.tanggalDinas=r.tanggalDinas; S.wajibFoto=r.wajibFoto;
+    if(r.satker) $("#satker").textContent=r.satker+" · KPLP";
+    $("#fotoHint").textContent=(S.wajibFoto?"Wajib":"Opsional")+" · ambil langsung di lokasi";
+    ls.set("kk_cache",JSON.stringify({jam:r.jam,pos:r.pos,jadwal:r.jadwal,jadwal7:r.jadwal7,tanggalDinas:r.tanggalDinas}));
+    if(!S.date){S.date=r.tanggalDinas;$("#pDate").value=S.date}
+  }catch(e){
+    if(e.sesi) return;
+    try{const c=JSON.parse(ls.get("kk_cache")||"null");if(c){Object.assign(S,c);if(!S.date){S.date=c.tanggalDinas;$("#pDate").value=S.date}}}catch(x){}
+    toast("Tidak dapat memuat data terbaru. Memakai data tersimpan terakhir.");
+  }
+  $("#tabAdmin").hidden=!(S.user&&S.user.peran==="Admin");
+  if(S.user&&S.user.peran==="Pimpinan"&&!S.tabSet){S.tabSet=true;document.querySelector('nav.tabs [data-tab="pantau"]').click()}
+  render(); loadLog(true); flush();
+}
+async function loadLog(silent){
+  if(!S.token||!S.date) return;
+  try{
+    const r=await call("log",{tanggal:S.date});
+    if(!r.ok) throw new Error(r.pesan);
+    S.entries=r.entries; S.viewJadwal=r.jadwal; S.petugas=r.petugas;
+    if(S.date===S.tanggalDinas) S.todayEntries=r.entries;
+    else{const t=await call("log",{tanggal:S.tanggalDinas}); if(t.ok) S.todayEntries=t.entries;}
+    $("#pUpd").textContent="Diperbarui "+hhmm(now().getTime())+" WIB · otomatis tiap 1 menit";
+  }catch(e){ if(!silent&&!e.sesi) toast("Gagal memuat log. Periksa sinyal lalu tekan Muat ulang."); }
+  render();
+}
+
+/* ---------- Jam ---------- */
+let lastSlot=-1,lastDinas=null;
+function tick(){
+  const n=now(), w=wib(n);
+  $("#clk").textContent=pad(w.h)+":"+pad(w.mi)+":"+pad(w.s);
+  $("#dte").textContent=HARI[w.dow]+", "+w.d+" "+BLN[w.m]+" "+w.y+" · WIB";
+  if(!S.user) return;
+  const k=slotOf(n.getTime()), r=rel(n.getTime()), left=Math.max(0,(2*k+2-r)*3600-w.mi*60-w.s);
+  const cd=$("#rCd"); cd.textContent=pad(Math.floor(left/3600))+":"+pad(Math.floor(left%3600/60))+":"+pad(left%60);
+  cd.style.color=left<900?"var(--bad)":"";
+  const dn=dinasOf(n.getTime());
+  if(k!==lastSlot||dn!==lastDinas){
+    const rolled=lastDinas&&dn!==lastDinas; lastSlot=k; lastDinas=dn;
+    if(rolled){ if(S.date===S.tanggalDinas){S.date=dn;$("#pDate").value=dn} S.tanggalDinas=dn; init(); } else render();
+  }
+}
+
+/* ---------- Render ---------- */
+const groups=list=>{const m=new Map();list.forEach(p=>{const a=p.area||"Lainnya";if(!m.has(a))m.set(a,[]);m.get(a).push(p)});return [...m]};
+const doneIn=(E,posId,k)=>E.some(e=>e.posId===posId&&slotOf(e.ts)===k);
+function myDuty(){
+  if(!S.user||!S.jadwal) return null;
+  const n=now().getTime(), sh=shiftOfSlot(slotOf(n)), r=S.jadwal[sh.toLowerCase()];
+  return {shift:sh,rupam:r,mine:String(r).split(",").includes(S.user.rupam),admin:LUAR.includes(S.user.peran)};
+}
+function nextDuty(){
+  if(!S.user||S.user.rupam==="-"||!S.jadwal7) return "";
+  const curK=slotOf(now().getTime());
+  for(const [di,j] of S.jadwal7.entries()){
+    for(const sh of SHIFTS){ if(!String(j[sh.toLowerCase()]).split(",").includes(S.user.rupam)) continue;
+      const B=shiftBounds()[sh]; if(di===0&&B[1]<=curK) continue;
+      const when=di===0?"hari ini":di===1?"besok":tglLabel(j.tanggal);
+      return when+" shift "+sh.toLowerCase()+" "+shiftJam(sh); }
+  }
+  return "";
+}
+function render(){ if(!S.user) return; renderUser(); renderHeader(); renderPick(); renderPantau(); renderQueue(); renderAkun(); }
+function renderUser(){
+  const u=S.user, d=myDuty();
+  $("#uNama").textContent=u.nama;
+  $("#uInfo").textContent=(u.jabatan||((u.rupam!=="-"?"Rupam "+u.rupam+" · ":"")+u.peran))+" · ID "+u.nip;
+  const st=$("#uStatus");
+  if(!d){st.textContent="";return}
+  if(d.admin){st.className="chip idle";st.textContent=u.peran==="Admin"?"Admin":"Pimpinan";}
+  else if(d.mine){st.className="chip ok";st.textContent="Sedang dinas "+d.shift.toLowerCase();}
+  else {st.className="chip idle";st.textContent=String(S.jadwal.lepas).split(",").includes(u.rupam)?"Lepas piket":"Tidak dinas";}
+  const w=$("#dutyWarn");
+  if(d&&!d.mine&&!d.admin){w.hidden=false;w.innerHTML=`Shift ${d.shift.toLowerCase()} ini dinas <b>Rupam ${esc(d.rupam)}</b>. Laporan Anda tetap dicatat tetapi ditandai <b>di luar jadwal</b>. ${nextDuty()?"Dinas berikutnya: "+esc(nextDuty())+".":""}`}
+  else w.hidden=true;
+}
+function renderHeader(){
+  const n=now().getTime(), k=slotOf(n), d=myDuty(), done=S.pos.filter(p=>doneIn(S.todayEntries,p.id,k)).length;
+  $("#rNum").textContent=pad(k+1);
+  $("#rLbl").textContent="Putaran ke-"+(k+1)+" · "+slotLbl(k);
+  $("#rSub").textContent=(d?"Shift "+d.shift.toLowerCase()+" · Rupam "+d.rupam+" · ":"")+done+" dari "+S.pos.length+" titik terkontrol";
+  $("#rBar").style.width=(S.pos.length?done/S.pos.length*100:0)+"%";
+}
+function renderPick(){
+  const k=slotOf(now().getTime());
+  $("#posPick").innerHTML=S.pos.length?groups(S.pos).map(([a,ps])=>`<div class="grp">${esc(a)}</div>`+ps.map(p=>`<button type="button" class="posbtn" data-pos="${esc(p.id)}" aria-pressed="${!!(S.sel&&!S.sel.viaQR&&S.sel.id===p.id)}"><span class="n">${esc(p.nama)}</span>${doneIn(S.todayEntries,p.id,k)?'<span class="chip ok">Sudah</span>':'<span class="chip warn">Belum</span>'}</button>`).join("")).join(""):'<div class="empty">Daftar titik belum tersedia.</div>';
+  const qr=!!(S.sel&&S.sel.viaQR); $("#pickedBox").hidden=!qr; $("#scanBox").hidden=qr; if(qr) $("#pickedName").textContent=S.sel.nama;
+}
+function renderPantau(){
+  const J=S.viewJadwal||(S.date===S.tanggalDinas?S.jadwal:null); if(!J||!S.date) return;
+  const n=now().getTime(), cd=S.tanggalDinas, isCur=S.date===cd, future=S.date>cd, cur=isCur?slotOf(n):(future?-1:SLOTS);
+  const E=S.entries, cell={}; E.forEach(e=>{const key=e.posId+"|"+slotOf(e.ts);(cell[key]=cell[key]||[]).push(e)});
+  const B=shiftBounds(), st={}; SHIFTS.forEach(s=>st[s]={done:0,miss:0,denom:0,find:0,n:0});
+  E.forEach(e=>{const s=shiftOfSlot(slotOf(e.ts));st[s].n++;if(e.kondisi==="temuan")st[s].find++});
+  let h='<thead><tr><th></th>'+SHIFTS.map(s=>`<th class="band" colspan="${B[s][1]-B[s][0]}">${s} · R.${esc(J[s.toLowerCase()])}</th>`).join("")+'</tr><tr><th></th>'+Array.from({length:SLOTS},(_,k)=>`<th class="${k===cur&&isCur?"cur":""}${B[shiftOfSlot(k)][0]===k&&k?" sep":""}" title="${slotLbl(k)}">${pad(slotStart(k))}</th>`).join("")+'</tr></thead><tbody>';
+  groups(S.pos).forEach(([a,ps])=>{ h+=`<tr><td class="ga" colspan="13">${esc(a)}</td></tr>`; ps.forEach(p=>{
+    h+=`<tr><td class="pn">${esc(p.nama)}</td>`;
+    for(let k=0;k<SLOTS;k++){ const s=shiftOfSlot(k), es=cell[p.id+"|"+k]||[], find=es.some(e=>e.kondisi==="temuan"); let cls,txt="";
+      if(es.length){cls="ok";txt=es.length>1?"×"+es.length:"✓";st[s].done++;st[s].denom++}
+      else if(k<cur){cls="bad";txt="–";st[s].miss++;st[s].denom++}
+      else if(k===cur&&isCur) cls="warn"; else cls="idle";
+      const tip=es.length?es.map(e=>hhmm(e.ts)+" "+e.petugas+" (R."+e.rupam+")").join(", "):slotLbl(k);
+      h+=`<td class="c ${cls}${find?" find":""}${B[s][0]===k&&k?" sep":""}" title="${esc(p.nama+" · "+tip)}">${txt}</td>`; }
+    h+='</tr>'; }); });
+  $("#mx").innerHTML=h+'</tbody>';
+  $("#mxHint").textContent="Satu putaran = 2 jam. Hari dinas "+tglLabel(S.date)+" berlangsung "+pad(S.jam.pagi)+".00 hingga "+pad(S.jam.pagi)+".00 esok hari. Sel bergaris merah berarti ada temuan.";
+  const curShift=isCur?shiftOfSlot(slotOf(n)):null;
+  $("#shiftCards").innerHTML=SHIFTS.map(s=>{const x=st[s],pct=x.denom?Math.round(x.done/x.denom*100):null,state=future||(isCur&&B[s][0]>slotOf(n))?"Belum mulai":(curShift===s?"Berjalan":"Selesai");
+    return `<div class="sc${curShift===s?" now":""}"><div class="row" style="justify-content:space-between;align-items:baseline;gap:6px"><span class="eyebrow">${s} · ${shiftJam(s)}</span><span class="chip ${state==="Berjalan"?"warn":state==="Selesai"?"idle":"idle"}">${state}</span></div>
+      <div class="rp">Rupam ${esc(J[s.toLowerCase()])}</div>
+      <div class="pc ${pct==null?"":pct>=90?"good":pct<70?"poor":""}">${pct==null?"–":pct+"%"}</div>
+      <div class="hint">${x.done} terkontrol · <span style="color:var(--bad)">${x.miss} terlewat</span> · ${x.find} temuan</div></div>`}).join("")+`<div class="sc lp"><span class="eyebrow">Lepas piket</span><div class="rp">Rupam ${esc(J.lepas||"–")}</div></div>`;
+  const sorted=[...E].sort((a,b)=>b.ts-a.ts);
+  $("#log").innerHTML=sorted.length?sorted.map(e=>`<li><span class="tm">${hhmm(e.ts)}</span><div><b>${esc(e.posNama)}</b><div class="who">${esc(e.petugas)} · Rupam ${esc(e.rupam)} · ${esc(e.shift)} · Putaran ${slotOf(e.ts)+1}</div></div>${e.kondisi==="temuan"?'<span class="chip bad">Temuan</span>':'<span class="chip ok">Aman</span>'}${e.catatan?`<div class="note">${esc(e.catatan)}</div>`:""}${e.ket?`<div class="late">${esc(e.ket)}</div>`:""}${e.foto?`<div style="grid-column:2/-1"><button class="linkbtn" data-foto="${esc(e.foto)}" data-cap="${esc(e.posNama+" · "+e.petugas+" · "+hhmm(e.ts)+" WIB")}">Lihat foto</button></div>`:""}</li>`).join(""):'<li class="empty" style="display:block">Belum ada kontrol tercatat untuk hari dinas ini.</li>';
+  const cnt={}; E.forEach(e=>{const c=cnt[e.nip]=cnt[e.nip]||{n:0,f:0,nama:e.petugas,rupam:e.rupam};c.n++;if(e.kondisi==="temuan")c.f++});
+  $("#rk").innerHTML=SHIFTS.map(s=>{const r=J[s.toLowerCase()], mem=S.petugas.filter(p=>p.rupam===r);
+    const extra=Object.entries(cnt).filter(([nip,c])=>E.some(e=>e.nip===nip&&shiftOfSlot(slotOf(e.ts))===s)&&!mem.some(m=>m.nip===nip)).map(([nip,c])=>({nip,nama:c.nama,rupam:c.rupam,peran:"",luar:true}));
+    const rows=[...mem,...extra].map(p=>{const n=E.filter(e=>e.nip===p.nip&&shiftOfSlot(slotOf(e.ts))===s).length;return `<tr><td>${esc(p.nama)}<div class="hint">${p.luar?"Rupam "+esc(p.rupam)+" · di luar jadwal":esc(p.peran)}</div></td><td class="n${n===0&&state(s)!=="Belum mulai"?" zero":""}">${n}</td></tr>`}).join("");
+    return `<div class="rkh">${s} · Rupam ${esc(r)}</div><table class="rk">${rows||'<tr><td class="hint">Belum ada anggota terdaftar di Rupam ini.</td></tr>'}</table>`}).join("");
+  function state(s){return future||(isCur&&B[s][0]>slotOf(n))?"Belum mulai":"x"}
+}
+function renderAkun(){
+  const u=S.user; if(!u) return;
+  $("#akunInfo").innerHTML=`<div><span>Nama</span><b>${esc(u.nama)}</b></div><div><span>NIP / ID</span><b class="mono">${esc(u.nip)}</b></div><div><span>Rupam</span><b>${esc(u.rupam)}</b></div><div><span>Peran</span><b>${esc(u.peran)}</b></div>${u.jabatan?`<div><span>Jabatan</span><b>${esc(u.jabatan)}</b></div>`:""}`;
+  const nd=nextDuty(); $("#akunJadwal").textContent=nd?"Jadwal berikutnya: "+nd+".":"";
+}
+
+/* ---------- Scan QR ---------- */
+let scanner=null;
+async function startScan(){
+  $("#scanErr").hidden=true;
+  if(!window.Html5Qrcode){showScanErr("Pustaka pemindai belum termuat. Periksa sinyal, atau pakai input kode manual.");return}
+  $("#reader").hidden=false;$("#btnScan").hidden=true;$("#btnStop").hidden=false;
+  try{scanner=scanner||new Html5Qrcode("reader");await scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:230,height:230}},onScan,()=>{})}
+  catch(e){stopScan();showScanErr("Kamera tidak bisa dibuka. Izinkan akses kamera di browser, atau pakai input kode manual.")}
+}
+async function stopScan(){try{if(scanner&&scanner.isScanning)await scanner.stop()}catch(e){} $("#reader").hidden=true;$("#btnScan").hidden=false;$("#btnStop").hidden=true}
+function showScanErr(m){const el=$("#scanErr");el.textContent=m;el.hidden=false}
+function onScan(text){
+  const p3=String(text).trim().split("|");
+  if(p3[0]!==QR_PREFIX||p3.length<3){showScanErr("QR ini bukan plakat Kontrol Keliling.");return}
+  const p=S.pos.find(x=>x.id===p3[1]); if(!p){showScanErr("Titik pada QR tidak terdaftar atau sudah nonaktif.");return}
+  if(navigator.vibrate) navigator.vibrate(120);
+  S.sel={id:p.id,nama:p.nama,kode:p3[2].toUpperCase(),viaQR:true}; stopScan(); $("#manualBox").open=false; render(); toast("Terpindai: "+p.nama);
+}
+
+/* ---------- Foto ---------- */
+function clearFoto(){S.foto=null;$("#fFoto").value="";$("#fotoPrev").hidden=true;$("#fotoShot").hidden=false;$("#fotoErr").hidden=true}
+function fotoErr(m){const el=$("#fotoErr");el.textContent=m;el.hidden=!m}
+async function onFoto(file){
+  fotoErr(""); if(!file) return;
+  if(!/^image\//.test(file.type)) return fotoErr("Berkas bukan foto.");
+  if(file.lastModified&&Date.now()-file.lastModified>10*60e3){$("#fFoto").value="";return fotoErr("Foto ini diambil lebih dari 10 menit lalu. Ambil foto baru langsung di lokasi.")}
+  try{
+    const img=await loadImg(file), sc=Math.min(1,1280/Math.max(img.width,img.height)), c=document.createElement("canvas");
+    c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    S.foto={canvas:c,ts:Date.now()+offset}; $("#fotoImg").src=c.toDataURL("image/jpeg",0.8);
+    $("#fotoInfo").textContent="Diambil "+hhmm(S.foto.ts)+" WIB · cap bukti ditambahkan saat dikirim"; $("#fotoPrev").hidden=false;$("#fotoShot").hidden=true;
+  }catch(e){fotoErr("Foto tidak bisa dibaca. Coba ambil ulang.")}
+}
+function loadImg(file){return new Promise((res,rej)=>{if(window.createImageBitmap)createImageBitmap(file,{imageOrientation:"from-image"}).then(res).catch(viaImg);else viaImg();function viaImg(){const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);res(i)};i.onerror=rej;i.src=u}})}
+function stamp(f,info){
+  const src=f.canvas,c=document.createElement("canvas");c.width=src.width;c.height=src.height;const g=c.getContext("2d");g.drawImage(src,0,0);
+  const w=wib(new Date(f.ts)),fs=Math.max(14,Math.round(c.width/38)),pd=Math.round(fs*.7),k=slotOf(f.ts);
+  const L=[info.pos+"  ·  Putaran "+(k+1)+" · "+shiftOfSlot(k),info.nama+"  ·  Rupam "+info.rupam+"  ·  NIP "+info.nip,HARI[w.dow]+", "+pad(w.d)+"/"+pad(w.m+1)+"/"+w.y+"  "+pad(w.h)+":"+pad(w.mi)+":"+pad(w.s)+" WIB",$("#satker").textContent.replace(" · KPLP","")+" · Kontrol Keliling"];
+  const lh=Math.round(fs*1.35),bh=L.length*lh+pd*2;
+  g.fillStyle="rgba(10,16,22,.72)";g.fillRect(0,c.height-bh,c.width,bh);g.fillStyle="#d9a441";g.fillRect(0,c.height-bh,Math.max(4,fs/4),bh);g.textBaseline="top";
+  L.forEach((t,i)=>{g.font=(i===0?"700 ":"500 ")+(i===0?Math.round(fs*1.1):fs)+"px Barlow, system-ui, sans-serif";g.fillStyle=i===0?"#ffffff":"#dfe5ea";g.fillText(t,pd*1.6,c.height-bh+pd+i*lh,c.width-pd*3)});
+  return c.toDataURL("image/jpeg",0.72);
+}
+
+/* ---------- Antrean offline ---------- */
+const Q={get(){try{return JSON.parse(ls.get("kk_q")||"[]")}catch(e){return[]}},set(a){return ls.set("kk_q",JSON.stringify(a))}};
+function renderQueue(){const q=Q.get(),b=$("#queueBanner");b.hidden=!q.length;if(q.length)b.textContent=q.length+" laporan menunggu sinyal dan akan terkirim otomatis."}
+let flushing=false;
+async function flush(){
+  if(flushing||S.demo||!S.token) return; const q=Q.get(); if(!q.length) return; flushing=true; const rest=[];
+  for(const it of q){ try{ const r=await api({...it,antrean:true,token:S.token}); if(r.sesi){rest.push(it);continue} if(!r.ok&&!r.tolak) rest.push(it); }catch(e){rest.push(it)} }
+  Q.set(rest); flushing=false; renderQueue(); if(rest.length<q.length){toast((q.length-rest.length)+" laporan tertunda terkirim");loadLog(true)}
+}
+
+/* ---------- Kirim laporan ---------- */
+function showErr(m){const el=$("#fErr");el.textContent=m;el.hidden=!m}
+let toastT; function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3800)}
+function setK(k){S.kondisi=k;$("#kAman").setAttribute("aria-pressed",k==="aman");$("#kTemuan").setAttribute("aria-pressed",k==="temuan");$("#noteHint").textContent=k==="temuan"?"Wajib diisi: jelaskan temuan dan tindakan":"Opsional bila aman"}
+async function kirim(){
+  showErr(""); const cat=$("#fCatatan").value.trim(); let sel=S.sel;
+  if(sel&&!sel.viaQR) sel={...sel,kode:$("#fKode").value.trim().toUpperCase()};
+  if(!sel) return showErr("Pindai QR plakat titik, atau pilih titik dan ketik kodenya.");
+  if(!sel.viaQR&&sel.kode.length!==4) return showErr("Kode titik terdiri dari 4 karakter.");
+  if(S.kondisi==="temuan"&&!cat) return showErr("Jelaskan temuan pada kolom catatan.");
+  if(S.wajibFoto&&!S.foto) return showErr("Ambil foto dokumentasi di lokasi dulu.");
+  if(S.foto&&Date.now()+offset-S.foto.ts>30*60e3) return showErr("Foto sudah lebih dari 30 menit. Ambil ulang foto di lokasi.");
+  const body={action:"lapor",posId:sel.id,kode:sel.kode,kondisi:S.kondisi,catatan:cat,idLaporan:Date.now().toString(36)+Math.random().toString(36).slice(2,7),clientTs:Date.now()+offset};
+  if(S.foto) body.foto=stamp(S.foto,{pos:sel.nama,nama:S.user.nama,rupam:S.user.rupam,nip:S.user.nip}).split(",")[1];
+  const btn=$("#fKirim"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Mengirim…';
+  try{
+    const r=await call("lapor",body);
+    if(!r.ok){showErr(r.pesan||"Laporan ditolak.");return}
+    toast("Tercatat "+String(r.jam).replace(":",".")+" WIB · "+r.posNama+(/^Di luar/.test(r.catatanJadwal||"")?" · di luar jadwal":""));
+    reset(); loadLog(true);
+  }catch(e){
+    if(e.sesi) return;
+    const q=Q.get(); q.push(body);
+    if(!Q.set(q)){showErr("Sinyal lemah dan memori antrean penuh. Tunggu sinyal lalu tekan Catat kontrol lagi.");return}
+    renderQueue(); toast("Sinyal lemah. Laporan dan foto disimpan, akan terkirim otomatis."); reset();
+  }finally{btn.disabled=false;btn.textContent="Catat kontrol"}
+}
+function reset(){S.sel=null;$("#fKode").value="";$("#fCatatan").value="";setK("aman");clearFoto();render()}
+
+/* ---------- Foto (Karupam/Admin) ---------- */
+async function lihatFoto(id,cap){
+  if(id==="contoh") return toast("Data contoh tidak memiliki foto. Kirim laporan uji untuk melihat hasilnya.");
+  if(!PIMPINAN.includes(S.user.peran)) return toast("Foto dokumentasi hanya bisa dibuka Karupam, Warupam, dan Admin.");
+  toast("Memuat foto…");
+  try{const r=await call("foto",{id}); if(!r.ok) return toast(r.pesan||"Foto tidak bisa dimuat.");
+    $("#toast").hidden=true;$("#modalImg").src=r.data;$("#modalCap").textContent=cap;const a=$("#modalDrive");if(r.url){a.href=r.url;a.hidden=false}else a.hidden=true;$("#modal").hidden=false;
+  }catch(e){if(!e.sesi)toast("Tidak dapat terhubung ke server.")}
+}
+
+/* ---------- Akun ---------- */
+async function gantiPin(){
+  const e=$("#pErr"); e.hidden=true; const lama=$("#pLama").value.trim(), baru=$("#pBaru").value.trim();
+  if(!/^\d{6}$/.test(baru)){e.textContent="PIN baru harus 6 angka.";e.hidden=false;return}
+  try{const r=await call("ganti_pin",{lama,baru}); if(!r.ok){e.textContent=r.pesan;e.hidden=false;return} $("#pLama").value="";$("#pBaru").value=""; toast("PIN berhasil diganti");}
+  catch(x){if(!x.sesi){e.textContent="Tidak dapat terhubung ke server.";e.hidden=false}}
+}
+
+/* ---------- Admin ---------- */
+async function loadAdmin(){
+  try{
+    const [a,b]=await Promise.all([call("admin_pos"),call("admin_petugas")]);
+    if(!a.ok||!b.ok) return toast((a.pesan||b.pesan)||"Gagal memuat data admin.");
+    S.adminPos=a.pos; S.adminPtg=b.petugas; S.posDirty=S.ptgDirty=false; renderAdmin();
+  }catch(e){if(!e.sesi)toast("Tidak dapat terhubung ke server.")}
+}
+function renderAdmin(){
+  const P=S.adminPtg||[], L=S.adminPos||[];
+  $("#ptgCount").textContent=RUPAM.map(r=>"R."+r+": "+P.filter(p=>p.rupam===r&&p.aktif!==false).length).join(" · ");
+  $("#ptgList").innerHTML=RUPAM.concat(["-"]).map(r=>{const ps=P.map((p,i)=>({p,i})).filter(x=>x.p.rupam===r); if(!ps.length) return "";
+    return `<div class="grp">${r==="-"?"Pejabat / tanpa Rupam":"Rupam "+r}</div>`+ps.map(({p,i})=>`<div class="ptgrow${p.aktif===false?" off":""}">
+      <div style="min-width:0"><b>${esc(p.nama)}</b><div class="hint"><span class="mono">${esc(p.nip)}</span>${p.jabatan?" · "+esc(p.jabatan):""}</div></div>
+      <select data-prupam="${i}" aria-label="Rupam">${RUPAM.concat(["-"]).map(x=>`<option value="${x}"${p.rupam===x?" selected":""}>${x==="-"?"–":"Rupam "+x}</option>`).join("")}</select>
+      <select data-pperan="${i}" aria-label="Peran"${p.nip===S.user.nip?" disabled":""}>${PERAN.map(x=>`<option${p.peran===x?" selected":""}>${x}</option>`).join("")}</select>
+      <div class="acts">${p.nip!==S.user.nip?`<button class="btn ghost sm" data-paktif="${i}">${p.aktif===false?"Aktifkan":"Nonaktifkan"}</button>`:""}<button class="btn ghost sm" data-preset="${i}">Reset PIN</button></div></div>`).join("")}).join("")||'<div class="empty">Belum ada petugas.</div>';
+  $("#savePtg").disabled=!S.ptgDirty;
+  $("#areaList").innerHTML=[...new Set(L.map(p=>p.area).filter(Boolean))].map(a=>`<option value="${esc(a)}">`).join("");
+  $("#posList").innerHTML=L.length?L.map((p,i)=>`<div class="posrow${p.aktif===false?" off":""}">
+    <div class="row" style="gap:6px"><input type="text" data-ren="${i}" value="${esc(p.nama)}" aria-label="Nama titik" style="flex:2 1 180px"><input type="text" data-area="${i}" value="${esc(p.area||"")}" aria-label="Area" placeholder="Area" style="flex:1 1 120px"></div>
+    <span class="plate">${esc(p.kode||"BARU")}</span>
+    <div class="acts">${p.id&&p.kode?`<button class="btn ghost sm" data-regen="${i}">Ganti kode</button>`:""}<button class="btn ghost sm" data-aktif="${i}">${p.aktif===false?"Aktifkan":"Nonaktifkan"}</button><button class="btn ghost sm" data-del="${i}">Hapus</button></div></div>`).join(""):'<div class="empty">Belum ada titik.</div>';
+  $("#savePos").disabled=!S.posDirty;
+  $("#jadwalTbl").innerHTML='<tr><th>Hari dinas</th><th>Pagi</th><th>Siang</th><th>Malam</th><th>Lepas</th></tr>'+(S.jadwal7||[]).map(x=>`<tr><td>${esc(tglLabel(x.tanggal))}</td><td>${esc(x.pagi)}</td><td>${esc(x.siang)}</td><td>${esc(x.malam)}</td><td class="hint">${esc(x.lepas||"")}</td></tr>`).join("");
+}
+async function savePtg(){
+  const btn=$("#savePtg"),e=$("#ptgErr"); btn.disabled=true; e.hidden=true;
+  try{const r=await call("admin_petugas_save",{list:S.adminPtg.map(p=>({nip:p.nip,nama:p.nama,rupam:p.rupam,peran:p.peran,aktif:p.aktif!==false,jabatan:p.jabatan||""}))});
+    if(!r.ok){e.textContent=r.pesan;e.hidden=false;btn.disabled=false;return}
+    S.adminPtg=r.petugas;S.ptgDirty=false;renderAdmin();toast("Data petugas disimpan");
+    const pb=$("#pinBaru"); if(r.pinBaru&&r.pinBaru.length){pb.hidden=false;pb.innerHTML="<b>PIN awal petugas baru</b> (catat dan bagikan langsung, tidak ditampilkan lagi):<br>"+r.pinBaru.map(x=>`${esc(x.nama)} · NIP <span class="mono">${esc(x.nip)}</span> · PIN <b class="mono">${esc(x.pin)}</b>`).join("<br>")} else pb.hidden=true;
+    loadLog(true);
+  }catch(x){if(!x.sesi){e.textContent="Tidak dapat terhubung ke server.";e.hidden=false;btn.disabled=false}}
+}
+async function resetPin(i){
+  const p=S.adminPtg[i];
+  try{const r=await call("admin_reset_pin",{nip:p.nip}); if(!r.ok) return toast(r.pesan);
+    const pb=$("#pinBaru"); pb.hidden=false; pb.innerHTML=`<b>PIN baru</b> untuk ${esc(p.nama)} (NIP <span class="mono">${esc(p.nip)}</span>): <b class="mono">${esc(r.pin)}</b>. Bagikan langsung, lalu minta petugas menggantinya.`;
+  }catch(e){if(!e.sesi)toast("Tidak dapat terhubung ke server.")}
+}
+async function savePos(){
+  const btn=$("#savePos"); btn.disabled=true;
+  try{const r=await call("admin_save",{list:S.adminPos.map(p=>({id:p.id||"",nama:p.nama,area:p.area||"",aktif:p.aktif!==false}))});
+    if(!r.ok){toast(r.pesan||"Gagal menyimpan.");btn.disabled=false;return}
+    S.adminPos=r.pos;S.posDirty=false;renderAdmin();toast("Daftar titik disimpan");init();
+  }catch(e){if(!e.sesi){toast("Tidak dapat terhubung ke server.");btn.disabled=false}}
+}
+async function regen(i){
+  const p=S.adminPos[i];
+  try{const r=await call("admin_regen",{id:p.id}); if(!r.ok) return toast(r.pesan); p.kode=r.kode; renderAdmin(); toast("Kode "+p.nama+" diganti. Cetak ulang plakatnya.")}
+  catch(e){if(!e.sesi)toast("Tidak dapat terhubung ke server.")}
+}
+function cetak(){
+  if(S.posDirty) return toast("Simpan perubahan titik dulu sebelum mencetak.");
+  if(!window.QRCode) return toast("Pustaka QR belum termuat. Periksa koneksi.");
+  const box=$("#plates"); box.innerHTML=""; const satker=$("#satker").textContent.replace(" · KPLP","");
+  (S.adminPos||[]).filter(p=>p.aktif!==false&&p.kode).forEach(p=>{const d=document.createElement("div");d.className="pl";
+    d.innerHTML=`<div class="s">${esc(satker)} · Kontrol Keliling</div><div class="a">${esc(p.area||"")}</div><div class="n">${esc(p.nama)}</div><div class="qr"></div><div class="k">${esc(p.kode)}</div><div class="i">Pindai QR ini setiap kontrol keliling (per 2 jam).</div>`;
+    box.appendChild(d); new QRCode(d.querySelector(".qr"),{text:QR_PREFIX+"|"+p.id+"|"+p.kode,width:240,height:240,correctLevel:QRCode.CorrectLevel.M}); });
+  setTimeout(()=>window.print(),400);
+}
+
+/* ---------- Event ---------- */
+$("#btnLogin").onclick=login; $("#lPin").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["lapor","pantau","akun","admin"].forEach(t=>$("#v-"+t).hidden=t!==b.dataset.tab);
+  if(b.dataset.tab!=="lapor") stopScan();
+  if(b.dataset.tab==="pantau") loadLog(true);
+  if(b.dataset.tab==="admin"&&!S.adminPos) loadAdmin();
+}));
+$("#btnScan").onclick=startScan; $("#btnStop").onclick=stopScan; $("#btnUlang").onclick=()=>{S.sel=null;render();startScan()};
+$("#posPick").addEventListener("click",e=>{const b=e.target.closest("[data-pos]");if(!b)return;const p=S.pos.find(x=>x.id===b.dataset.pos);S.sel={id:p.id,nama:p.nama,kode:"",viaQR:false};render();$("#fKode").focus()});
+$("#fKode").addEventListener("input",e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"")});
+$("#kAman").onclick=()=>setK("aman"); $("#kTemuan").onclick=()=>setK("temuan");
+$("#fFoto").addEventListener("change",e=>onFoto(e.target.files&&e.target.files[0]));
+$("#fKirim").onclick=kirim;
+$("#pDate").addEventListener("change",e=>{if(e.target.value){S.date=e.target.value;S.viewJadwal=null;loadLog()}});
+$("#btnRefresh").onclick=()=>loadLog();
+$("#log").addEventListener("click",e=>{const b=e.target.closest("[data-foto]");if(b)lihatFoto(b.dataset.foto,b.dataset.cap)});
+$("#modalClose").onclick=()=>{$("#modal").hidden=true;$("#modalImg").src=""};
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")$("#modalClose").click()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#modal").hidden)$("#modalClose").click()});
+$("#btnPin").onclick=gantiPin; $("#btnLogout").onclick=()=>logout("Anda telah keluar.");
+$("#btnCetak").onclick=cetak; $("#savePos").onclick=savePos; $("#savePtg").onclick=savePtg;
+$("#addPos").onclick=()=>{const n=$("#newPos").value.trim();if(!n)return;S.adminPos.push({id:"",nama:n,area:$("#newArea").value.trim()||"Lainnya",kode:"",aktif:true});$("#newPos").value="";S.posDirty=true;renderAdmin()};
+$("#posList").addEventListener("input",e=>{const i=e.target.dataset.ren,a=e.target.dataset.area;if(i!=null)S.adminPos[+i].nama=e.target.value;else if(a!=null)S.adminPos[+a].area=e.target.value;else return;S.posDirty=true;$("#savePos").disabled=false});
+$("#posList").addEventListener("click",e=>{const g=e.target.closest("[data-regen]"),a=e.target.closest("[data-aktif]"),d=e.target.closest("[data-del]");
+  if(g)regen(+g.dataset.regen); if(a){const p=S.adminPos[+a.dataset.aktif];p.aktif=p.aktif===false;S.posDirty=true;renderAdmin()}
+  if(d){if(d.dataset.ok){S.adminPos.splice(+d.dataset.del,1);S.posDirty=true;renderAdmin()}else{d.dataset.ok="1";d.textContent="Yakin hapus?"}}});
+$("#addPtg").onclick=()=>{const e=$("#ptgErr");e.hidden=true;const nip=$("#nNip").value.replace(/\s/g,""),nama=$("#nNama").value.trim();
+  if(!nip||!nama){e.textContent="Isi NIP dan nama.";e.hidden=false;return} if(S.adminPtg.some(p=>p.nip===nip)){e.textContent="NIP sudah terdaftar.";e.hidden=false;return}
+  S.adminPtg.push({nip,nama,rupam:$("#nRupam").value,peran:$("#nPeran").value,aktif:true});$("#nNip").value="";$("#nNama").value="";S.ptgDirty=true;renderAdmin()};
+$("#ptgList").addEventListener("change",e=>{const r=e.target.dataset.prupam,p=e.target.dataset.pperan;if(r!=null)S.adminPtg[+r].rupam=e.target.value;else if(p!=null)S.adminPtg[+p].peran=e.target.value;else return;S.ptgDirty=true;renderAdmin()});
+$("#ptgList").addEventListener("click",e=>{const a=e.target.closest("[data-paktif]"),r=e.target.closest("[data-preset]");
+  if(a){const p=S.adminPtg[+a.dataset.paktif];p.aktif=p.aktif===false;S.ptgDirty=true;renderAdmin()} if(r)resetPin(+r.dataset.preset)});
+window.addEventListener("online",flush);
+
+/* ---------- Mulai ---------- */
+if(S.demo){$("#demoBanner").hidden=false; S.token=null; S.user=null;}
+showView(); tick(); setInterval(tick,1000);
+if(S.token&&S.user) init();
+setInterval(()=>{if(S.token)loadLog(true)},60000);
+setInterval(flush,30000);
+})();
+</script>
+</body>
+</html>
